@@ -1,167 +1,155 @@
 /**
- * Represents the position of an entity in 2D space.
+ * @file Entity.ts
+ * @description Base entity class for game objects in Space Invaders
  */
-interface Position {
-    x: number;
-    y: number;
+
+/**
+ * Represents the possible entity types in the game
+ */
+export enum EntityType {
+  PLAYER = 'PLAYER',
+  ENEMY = 'ENEMY',
+  PROJECTILE = 'PROJECTILE',
+  SHIELD = 'SHIELD'
 }
 
 /**
- * Represents the dimensions of an entity.
+ * Vector2D interface for handling 2D positions and velocities
  */
-interface Dimensions {
-    width: number;
-    height: number;
+export interface Vector2D {
+  x: number;
+  y: number;
 }
 
 /**
- * Represents the velocity of an entity.
+ * Base entity class that provides common properties and methods
+ * for all game objects
  */
-interface Velocity {
-    dx: number;
-    dy: number;
-}
+export class Entity {
+  private _id: string;
+  private _type: EntityType;
+  private _position: Vector2D;
+  private _velocity: Vector2D;
+  private _width: number;
+  private _height: number;
+  private _active: boolean;
 
-/**
- * Base class for all game entities in Space Invaders.
- * Provides common properties and methods that all game objects will inherit.
- */
-export abstract class Entity {
-    private _id: string;
-    private _position: Position;
-    private _dimensions: Dimensions;
-    private _velocity: Velocity;
-    private _active: boolean;
-    private _visible: boolean;
+  /**
+   * Creates a new Entity instance
+   * @param type - The type of entity
+   * @param position - Initial position vector
+   * @param width - Width of the entity
+   * @param height - Height of the entity
+   */
+  constructor(
+    type: EntityType,
+    position: Vector2D,
+    width: number,
+    height: number
+  ) {
+    this._id = this.generateId();
+    this._type = type;
+    this._position = { ...position };
+    this._velocity = { x: 0, y: 0 };
+    this._width = width;
+    this._height = height;
+    this._active = true;
+  }
 
-    /**
-     * Creates a new Entity instance.
-     * @param x - Initial x coordinate
-     * @param y - Initial y coordinate
-     * @param width - Entity width
-     * @param height - Entity height
-     */
-    constructor(x: number, y: number, width: number, height: number) {
-        this._id = this.generateId();
-        this._position = { x, y };
-        this._dimensions = { width, height };
-        this._velocity = { dx: 0, dy: 0 };
-        this._active = true;
-        this._visible = true;
-    }
+  /**
+   * Generates a unique identifier for the entity
+   * @returns Unique string ID
+   */
+  private generateId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
 
-    /**
-     * Generates a unique identifier for the entity.
-     * @returns A unique string identifier
-     */
-    private generateId(): string {
-        return `entity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
+  // Getters and setters
+  get id(): string {
+    return this._id;
+  }
 
-    /**
-     * Updates the entity's state.
-     * Should be implemented by derived classes.
-     * @param deltaTime - Time elapsed since last update in milliseconds
-     */
-    abstract update(deltaTime: number): void;
+  get type(): EntityType {
+    return this._type;
+  }
 
-    /**
-     * Checks if this entity collides with another entity.
-     * @param other - The other entity to check collision with
-     * @returns True if entities collide, false otherwise
-     */
-    public checkCollision(other: Entity): boolean {
-        return (
-            this._position.x < other._position.x + other._dimensions.width &&
-            this._position.x + this._dimensions.width > other._position.x &&
-            this._position.y < other._position.y + other._dimensions.height &&
-            this._position.y + this._dimensions.height > other._position.y
-        );
-    }
+  get position(): Vector2D {
+    return { ...this._position };
+  }
 
-    /**
-     * Moves the entity by its current velocity.
-     * @param deltaTime - Time elapsed since last update in milliseconds
-     */
-    protected move(deltaTime: number): void {
-        this._position.x += this._velocity.dx * deltaTime;
-        this._position.y += this._velocity.dy * deltaTime;
-    }
+  set position(newPosition: Vector2D) {
+    this._position = { ...newPosition };
+  }
 
-    // Getters and setters
+  get velocity(): Vector2D {
+    return { ...this._velocity };
+  }
 
-    get id(): string {
-        return this._id;
-    }
+  set velocity(newVelocity: Vector2D) {
+    this._velocity = { ...newVelocity };
+  }
 
-    get position(): Position {
-        return { ...this._position };
-    }
+  get width(): number {
+    return this._width;
+  }
 
-    set position(newPosition: Position) {
-        this._position = { ...newPosition };
-    }
+  get height(): number {
+    return this._height;
+  }
 
-    get dimensions(): Dimensions {
-        return { ...this._dimensions };
-    }
+  get active(): boolean {
+    return this._active;
+  }
 
-    set dimensions(newDimensions: Dimensions) {
-        this._dimensions = { ...newDimensions };
-    }
+  set active(value: boolean) {
+    this._active = value;
+  }
 
-    get velocity(): Velocity {
-        return { ...this._velocity };
-    }
+  /**
+   * Gets the bounding box of the entity for collision detection
+   * @returns Object containing bounds information
+   */
+  getBounds(): { left: number; right: number; top: number; bottom: number } {
+    return {
+      left: this._position.x,
+      right: this._position.x + this._width,
+      top: this._position.y,
+      bottom: this._position.y + this._height
+    };
+  }
 
-    set velocity(newVelocity: Velocity) {
-        this._velocity = { ...newVelocity };
-    }
+  /**
+   * Updates the entity's position based on its velocity
+   * @param deltaTime - Time elapsed since last update
+   */
+  update(deltaTime: number): void {
+    if (!this._active) return;
 
-    get active(): boolean {
-        return this._active;
-    }
+    this._position.x += this._velocity.x * deltaTime;
+    this._position.y += this._velocity.y * deltaTime;
+  }
 
-    set active(value: boolean) {
-        this._active = value;
-    }
+  /**
+   * Deactivates the entity
+   */
+  deactivate(): void {
+    this._active = false;
+  }
 
-    get visible(): boolean {
-        return this._visible;
-    }
+  /**
+   * Activates the entity
+   */
+  activate(): void {
+    this._active = true;
+  }
 
-    set visible(value: boolean) {
-        this._visible = value;
-    }
-
-    /**
-     * Gets the bounding box of the entity.
-     * @returns An object containing the bounds of the entity
-     */
-    public getBounds(): { top: number; right: number; bottom: number; left: number } {
-        return {
-            top: this._position.y,
-            right: this._position.x + this._dimensions.width,
-            bottom: this._position.y + this._dimensions.height,
-            left: this._position.x
-        };
-    }
-
-    /**
-     * Deactivates the entity.
-     */
-    public deactivate(): void {
-        this._active = false;
-        this._visible = false;
-    }
-
-    /**
-     * Resets the entity to its default state.
-     * Should be implemented by derived classes if needed.
-     */
-    public reset(): void {
-        this._active = true;
-        this._visible = true;
-        this._velocity = { dx: 0, dy: 0 };
-    }
+  /**
+   * Resets the entity to its initial state
+   * @param position - New position for the entity
+   */
+  reset(position: Vector2D): void {
+    this._position = { ...position };
+    this._velocity = { x: 0, y: 0 };
+    this._active = true;
+  }
 }
