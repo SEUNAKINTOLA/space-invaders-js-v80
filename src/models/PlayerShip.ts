@@ -1,162 +1,139 @@
 /**
  * @file PlayerShip.ts
- * @description Player ship entity with movement capabilities for Space Invaders game
+ * @description Represents the player's ship entity in the Space Invaders game.
  */
-
-import { Entity } from './Entity';
 
 /**
- * Interface defining movement configuration for the player ship
+ * Interface defining the configuration options for a PlayerShip
  */
-interface MovementConfig {
-  maxSpeed: number;
-  acceleration: number;
-  deceleration: number;
-  bounds: {
-    left: number;
-    right: number;
-  };
+interface PlayerShipConfig {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    speed: number;
+    maxHealth?: number;
 }
 
 /**
- * PlayerShip class representing the player-controlled ship
- * Handles movement mechanics and boundaries
+ * Represents the player's ship in the game
+ * Handles ship state, properties, and basic behaviors
  */
-export class PlayerShip extends Entity {
-  private readonly config: MovementConfig;
-  private velocity: number;
-  private isMovingLeft: boolean;
-  private isMovingRight: boolean;
+export class PlayerShip {
+    private readonly width: number;
+    private readonly height: number;
+    private readonly speed: number;
+    private readonly maxHealth: number;
 
-  /**
-   * Creates a new PlayerShip instance
-   * @param x - Initial x position
-   * @param y - Initial y position
-   * @param width - Ship width
-   * @param height - Ship height
-   */
-  constructor(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    config: Partial<MovementConfig> = {}
-  ) {
-    super(x, y, width, height);
+    private position: { x: number; y: number };
+    private health: number;
+    private isAlive: boolean;
+    private lastShotTime: number;
+    private readonly shootCooldown: number = 250; // Milliseconds between shots
 
-    // Default configuration with reasonable values
-    this.config = {
-      maxSpeed: 400, // pixels per second
-      acceleration: 1200,
-      deceleration: 800,
-      bounds: {
-        left: 0,
-        right: 800, // default game width
-      },
-      ...config
-    };
-
-    this.velocity = 0;
-    this.isMovingLeft = false;
-    this.isMovingRight = false;
-  }
-
-  /**
-   * Updates the ship's movement state
-   * @param deltaTime - Time elapsed since last update in seconds
-   */
-  public update(deltaTime: number): void {
-    this.updateVelocity(deltaTime);
-    this.updatePosition(deltaTime);
-    this.enforceBoundaries();
-  }
-
-  /**
-   * Starts moving the ship left
-   */
-  public startMovingLeft(): void {
-    this.isMovingLeft = true;
-    this.isMovingRight = false;
-  }
-
-  /**
-   * Starts moving the ship right
-   */
-  public startMovingRight(): void {
-    this.isMovingRight = true;
-    this.isMovingLeft = false;
-  }
-
-  /**
-   * Stops the ship's movement
-   */
-  public stopMoving(): void {
-    this.isMovingLeft = false;
-    this.isMovingRight = false;
-  }
-
-  /**
-   * Gets the current velocity of the ship
-   */
-  public getVelocity(): number {
-    return this.velocity;
-  }
-
-  /**
-   * Updates the ship's velocity based on movement state
-   */
-  private updateVelocity(deltaTime: number): void {
-    if (this.isMovingLeft) {
-      this.velocity = Math.max(
-        -this.config.maxSpeed,
-        this.velocity - this.config.acceleration * deltaTime
-      );
-    } else if (this.isMovingRight) {
-      this.velocity = Math.min(
-        this.config.maxSpeed,
-        this.velocity + this.config.acceleration * deltaTime
-      );
-    } else {
-      // Apply deceleration when not moving
-      if (this.velocity > 0) {
-        this.velocity = Math.max(
-          0,
-          this.velocity - this.config.deceleration * deltaTime
-        );
-      } else if (this.velocity < 0) {
-        this.velocity = Math.min(
-          0,
-          this.velocity + this.config.deceleration * deltaTime
-        );
-      }
+    /**
+     * Creates a new PlayerShip instance
+     * @param config - Configuration options for the player ship
+     */
+    constructor(config: PlayerShipConfig) {
+        this.position = {
+            x: config.x,
+            y: config.y
+        };
+        this.width = config.width;
+        this.height = config.height;
+        this.speed = config.speed;
+        this.maxHealth = config.maxHealth || 100;
+        this.health = this.maxHealth;
+        this.isAlive = true;
+        this.lastShotTime = 0;
     }
-  }
 
-  /**
-   * Updates the ship's position based on current velocity
-   */
-  private updatePosition(deltaTime: number): void {
-    this.x += this.velocity * deltaTime;
-  }
-
-  /**
-   * Ensures the ship stays within the defined boundaries
-   */
-  private enforceBoundaries(): void {
-    if (this.x < this.config.bounds.left) {
-      this.x = this.config.bounds.left;
-      this.velocity = 0;
-    } else if (this.x + this.width > this.config.bounds.right) {
-      this.x = this.config.bounds.right - this.width;
-      this.velocity = 0;
+    /**
+     * Updates the ship's horizontal position
+     * @param deltaX - The change in x position
+     */
+    public move(deltaX: number): void {
+        this.position.x += deltaX * this.speed;
     }
-  }
 
-  /**
-   * Sets new movement boundaries for the ship
-   */
-  public setBoundaries(left: number, right: number): void {
-    this.config.bounds.left = left;
-    this.config.bounds.right = right;
-  }
+    /**
+     * Checks if the ship can fire based on cooldown
+     * @returns boolean indicating if the ship can shoot
+     */
+    public canShoot(): boolean {
+        const currentTime = Date.now();
+        if (currentTime - this.lastShotTime >= this.shootCooldown) {
+            this.lastShotTime = currentTime;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Applies damage to the ship
+     * @param amount - Amount of damage to apply
+     * @returns boolean indicating if the ship was destroyed
+     */
+    public takeDamage(amount: number): boolean {
+        if (!this.isAlive) return false;
+
+        this.health = Math.max(0, this.health - amount);
+        if (this.health === 0) {
+            this.isAlive = false;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Resets the ship to its initial state
+     * @param position - Optional new position for the ship
+     */
+    public reset(position?: { x: number; y: number }): void {
+        if (position) {
+            this.position = { ...position };
+        }
+        this.health = this.maxHealth;
+        this.isAlive = true;
+        this.lastShotTime = 0;
+    }
+
+    // Getters
+    public getPosition(): { x: number; y: number } {
+        return { ...this.position };
+    }
+
+    public getWidth(): number {
+        return this.width;
+    }
+
+    public getHeight(): number {
+        return this.height;
+    }
+
+    public getHealth(): number {
+        return this.health;
+    }
+
+    public getSpeed(): number {
+        return this.speed;
+    }
+
+    public isDestroyed(): boolean {
+        return !this.isAlive;
+    }
+
+    /**
+     * Gets the ship's bounding box for collision detection
+     * @returns Object containing the ship's bounds
+     */
+    public getBounds(): { x: number; y: number; width: number; height: number } {
+        return {
+            x: this.position.x,
+            y: this.position.y,
+            width: this.width,
+            height: this.height
+        };
+    }
 }
